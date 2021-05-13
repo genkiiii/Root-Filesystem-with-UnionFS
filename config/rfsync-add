@@ -1,0 +1,67 @@
+#!/bin/sh
+# Author:genki
+#
+
+#PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+#lowerdir="/media/root-ro"
+
+. /etc/rfsync.conf
+#source /etc/rfsync.conf
+#echo $lowerdir
+
+red=31
+green=32
+yellow=33
+blue=34
+
+cecho()
+{
+    color=$1
+    shift
+    echo "\033[${color}m$@\033[m"
+}
+# cecho ${red} "hello"
+
+Usage_func()
+{
+    cecho ${yellow} "Usage: ${0##*/} <file1(absolute path)> <file2(absolute path)> ..."
+}
+
+if [ ! $# -gt 0 ]; then
+    Usage_func
+    exit 1
+fi
+
+
+mount -o remount,rw ${lowerdir}
+
+if [ ! $? -eq 0 ]; then
+    cecho ${yellow} "fail to remount ${lowerdir} with read-write mode"
+    exit 2
+fi
+
+for file in $@
+do
+    if [ -e ${file} ]; then
+	echo "copying ${file} to ${lowerdir}${file}"
+	#cp -rf ${file} ${lowerdir}
+	rsync -a --delete ${file} "${lowerdir}${file}"
+    else
+	cecho ${yellow} "${file} does not exists"
+	cecho ${yellow} 'file path must be "absolute"'
+    fi
+done
+
+
+mount -o remount,ro ${lowerdir}
+
+if [ ! $? -eq 0 ]; then
+    cecho ${red} "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    cecho ${red} "Failed to remount ${lowerdir} with read-only mode"
+    cecho ${red} "File system in not safe"
+    cecho ${red} "You should shutdown this system immediately!"
+    cecho ${red} "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+fi
+
+#trap "" EXIT HUP INT QUIT TERM
